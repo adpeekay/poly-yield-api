@@ -115,7 +115,7 @@ def calculate(req: YieldRequest, request: Request):
         round(req.lat, 3),        # round for privacy + cache efficiency
         round(req.lon, 3),
         req.timezone,
-        getattr(req, "no_panels", 1),
+        req.no_panels,
         req.slope_ns,
         req.max_cell_tilt,
         req.temp_air,
