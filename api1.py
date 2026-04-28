@@ -92,6 +92,7 @@ class YieldRequest(BaseModel):
     lat: float
     lon: float
     timezone: str = "UTC"
+    no_panels: int = 1
     slope_ns: float = 2.0
     max_cell_tilt: int = 60
     temp_air: float = 20.0
