@@ -15,20 +15,66 @@
       Calculate annual yield
 </button>
 </div>
- 
+
+<div style="margin-top: 1rem;">
+  <label>
+    Polytunnel curvature (°):
+    <input type="range"
+           id="curvature"
+           min="30"
+           max="80"
+           step="2"
+           value="60">
+    <span id="curvVal">60</span>
+  </label>
+</div>
+
+<div style="margin-top: 0.7rem;">
+  <label>
+    N–S land slope (°):
+    <input type="range"
+           id="slopeNS"
+           min="-10"
+           max="10"
+           step="0.5"
+           value="0">
+    <span id="slopeVal">0</span>
+  </label>
+</div>
+
+<div style="margin-top: 1rem;">
+  <label>
+    Number of panels:
+    <input type="range"
+           id="noPanels"
+           min="5"
+           max="400"
+           step="5"
+           value="10">
+    <span id="panelVal">1</span>
+  </label>
+</div>
+
   <div id="status" style="margin-top: 0.7rem; font-style: italic;"></div>
 <div id="result" style="margin-top: 1rem; font-size: 1.05rem;"></div>
  
   <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #555;">
     Results are indicative and based on modelled assumptions.
 </div>
- 
+
+<div style="margin-top: 1.5rem;">
+  <canvas id="dailyChart" height="120"></canvas>
+</div>
+
+
 </div>
  
 <!-- Leaflet (more stable CDN for Siteglide) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
- 
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
  
@@ -45,12 +91,81 @@ document.addEventListener("DOMContentLoaded", function () {
   let selectedLon = null;
   let marker = null;
   let isRunning = false;
+  let dailyChart = null;
  
   const btn = document.getElementById("calcBtn");
   const status = document.getElementById("status");
   const result = document.getElementById("result");
   const coords = document.getElementById("coords");
+
+const noPanelsInput = document.getElementById("noPanels");
+const panelVal = document.getElementById("panelVal");
+
+const curvatureInput = document.getElementById("curvature");
+const curvVal = document.getElementById("curvVal");
+
+const slopeInput = document.getElementById("slopeNS");
+const slopeVal = document.getElementById("slopeVal");
+
+curvatureInput.addEventListener("input", () => {
+  curvVal.textContent = curvatureInput.value;
+});
+
+slopeInput.addEventListener("input", () => {
+  slopeVal.textContent = slopeInput.value;
+});
+
+noPanelsInput.addEventListener("input", () => {
+  panelVal.textContent = noPanelsInput.value;
+});
  
+function plotDailyEnergy(dailyData) {
+  const labels = dailyData.map(d => d.date);
+  const values = dailyData.map(d => d.kwh);
+
+  if (dailyChart) {
+    dailyChart.destroy();
+  }
+
+  dailyChart = new Chart(
+    document.getElementById("dailyChart"),
+    {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Daily energy (kWh)",
+          data: values,
+          borderColor: "#1f77b4",
+          backgroundColor: "rgba(31, 119, 180, 0.1)",
+          pointRadius: 0,
+          tension: 0.25
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            display: false
+          },
+          y: {
+            title: {
+              display: true,
+              text: "kWh / day"
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true
+          }
+        }
+      }
+    }
+  );
+}
+
   // ===============================
   // MAP INIT
   // ===============================
@@ -109,7 +224,10 @@ document.addEventListener("DOMContentLoaded", function () {
           lat: selectedLat,
           lon: selectedLon,
           timezone: DEFAULT_TIMEZONE,
-          no_panels: 1
+          no_panels: parseInt(noPanelsInput.value),        
+          max_cell_tilt: parseInt(curvatureInput.value),
+          slope_ns: parseFloat(slopeInput.value)
+
         })
       });
  
@@ -121,6 +239,9 @@ document.addEventListener("DOMContentLoaded", function () {
 <strong>Annual energy:</strong> ${data.annual_kwh} kWh<br>
 <strong>Yield:</strong> ${data.kwh_per_kwp} kWh/kWp
       `;
+      if (data.daily_kwh) {
+  plotDailyEnergy(data.daily_kwh);
+}
  
       status.textContent = "Calculation complete ✅";
  
