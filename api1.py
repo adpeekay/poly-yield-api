@@ -111,7 +111,7 @@ def calculate(req: YieldRequest, request: Request):
 
     start = time.time()
 
-    (annual_kwh, kwh_per_kwp, _), cache_hit = get_cached_result(
+    (annual_kwh, kwh_per_kwp, daily_kwh ), cache_hit = get_cached_result(
         round(req.lat, 3),        # round for privacy + cache efficiency
         round(req.lon, 3),
         req.timezone,
@@ -137,4 +137,6 @@ def calculate(req: YieldRequest, request: Request):
     return {
         "annual_kwh": round(annual_kwh, 1),
         "kwh_per_kwp": round(kwh_per_kwp, 0),
+        "daily_kwh" : [{"date": d.isoformat(),"kwh":float(v)}
+                       for d, v in daily_kwh.items()]
     }
