@@ -1,235 +1,139 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <title>PV Yield Calculator</title>
-
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-o9N1j7kP7kGStbtsYwC3WY2Jk8fGNI2Rgl7v+k0+7m8="
-    crossorigin=""
-  />
-
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      line-height: 1.4;
-    }
-
-    h1 {
-      margin-bottom: 0.3rem;
-    }
-
-    #map {
-      height: 400px;
-      margin: 1rem 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-
-    #coords {
-      font-weight: 500;
-    }
-
-    button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    button[disabled] {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    #status {
-      margin-top: 0.7rem;
-      font-style: italic;
-    }
-
-    #result {
-      margin-top: 1rem;
-      font-size: 1.05rem;
-    }
-
-    .note {
-      margin-top: 1.5rem;
-      font-size: 0.85rem;
-      color: #555;
-    }
-  </style>
-</head>
-
-<body>
-
-  <h1>PV Yield Calculator (Trial)</h1>
-  <p>Select a location on the map, then calculate indicative annual energy yield.</p>
-
-  <div id="map"></div>
-
+<div style="max-width: 900px; margin: 0 auto; padding: 1.5rem; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">
+ 
+  <h1 style="margin-bottom: 0.3rem;">PV Yield Calculator (Trial)</h1>
+<p>Select a location on the map, then calculate indicative annual energy yield.</p>
+ 
+  <div id="map" style="height: 400px; margin: 1rem 0; border: 1px solid #ccc; border-radius: 6px;"></div>
+ 
   <div>
-    <strong>Selected location:</strong>
-    <span id="coords">Click on the map</span>
-  </div>
-
+<strong>Selected location:</strong>
+<span id="coords">Click on the map</span>
+</div>
+ 
   <div style="margin-top: 1rem;">
-    <button id="calcBtn">Calculate annual yield</button>
-  </div>
-
-  <div id="status"></div>
-  <div id="result"></div>
-
-  <div class="note">
-    Results are indicative and based on modelled assumptions.  
-    For full assessments and design support, please contact us.
-  </div>
-
-  <!-- Leaflet JS -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-o8U3rtpZs+Zqqc9z3jv4PQ3sVa0YdUJta47dK2NVaCk="
-    crossorigin=""
-  ></script>
-
-  <script>
-    // ===============================
-    // CONFIGURATION
-    // ===============================
-    const API_URL = "https://poly-yield-api.onrender.com/calculate";
-    const DEFAULT_TIMEZONE = "UTC"; // safe default
-
-    // ===============================
-    // STATE
-    // ===============================
-    let selectedLat = null;
-    let selectedLon = null;
-    let marker = null;
-    let isRunning = false;
-
-    const btn = document.getElementById("calcBtn");
-    const status = document.getElementById("status");
-    const result = document.getElementById("result");
-    const coords = document.getElementById("coords");
-
-    // ===============================
-    // MAP SETUP
-    // ===============================
-    const map = L.map("map").setView([20, 0], 2);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(map);
-
-    map.doubleClickZoom.disable();
-
-    map.on("click", function (e) {
-      selectedLat = e.latlng.lat;
-      selectedLon = e.latlng.lng;
-
-      if (marker) {
-        marker.setLatLng(e.latlng);
-      } else {
-        marker = L.marker(e.latlng).addTo(map);
-      }
-
-      coords.textContent =
-        selectedLat.toFixed(4) + ", " + selectedLon.toFixed(4);
-
-      status.textContent = "";
-      result.textContent = "";
-    });
-
-    // ===============================
-    // API CALL
-    // ===============================
-    async function calculateYield() {
-      if (isRunning) return;
-
-      if (selectedLat === null || selectedLon === null) {
-        status.textContent = "Please select a location on the map.";
-        return;
-      }
-
-      isRunning = true;
-      btn.disabled = true;
-      btn.textContent = "Calculating…";
-      status.textContent = "Running yield model…";
-      result.textContent = "";
-
-      const payload = {
-        lat: selectedLat,
-        lon: selectedLon,
-        timezone: DEFAULT_TIMEZONE,
-        no_panels: 1
-      };
-
-      const start = performance.now();
-
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          handleApiError(res);
-          return;
-        }
-
-        const data = await res.json();
-        const end = performance.now();
-
-        result.innerHTML = `
-          <strong>Annual energy:</strong> ${data.annual_kwh} kWh<br>
-          <strong>Yield:</strong> ${data.kwh_per_kwp} kWh/kWp
-        `;
-
-        status.textContent =
-          "Calculation complete in " +
-          ((end - start) / 1000).toFixed(1) +
-          " seconds ✅";
-
-      } catch (err) {
-        status.textContent = "Network error – please try again.";
-      } finally {
-        isRunning = false;
-        btn.disabled = false;
-        btn.textContent = "Calculate annual yield";
-      }
+<button id="calcBtn" style="padding: 0.6rem 1.2rem; font-size: 1rem; cursor: pointer;">
+      Calculate annual yield
+</button>
+</div>
+ 
+  <div id="status" style="margin-top: 0.7rem; font-style: italic;"></div>
+<div id="result" style="margin-top: 1rem; font-size: 1.05rem;"></div>
+ 
+  <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #555;">
+    Results are indicative and based on modelled assumptions.
+</div>
+ 
+</div>
+ 
+<!-- Leaflet (more stable CDN for Siteglide) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+ 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+ 
+  // ===============================
+  // CONFIG
+  // ===============================
+  const API_URL = "https://poly-yield-api.onrender.com/calculate";
+  const DEFAULT_TIMEZONE = "UTC";
+ 
+  // ===============================
+  // STATE
+  // ===============================
+  let selectedLat = null;
+  let selectedLon = null;
+  let marker = null;
+  let isRunning = false;
+ 
+  const btn = document.getElementById("calcBtn");
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+  const coords = document.getElementById("coords");
+ 
+  // ===============================
+  // MAP INIT
+  // ===============================
+  const map = L.map("map").setView([20, 0], 2);
+ 
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+ 
+  map.doubleClickZoom.disable();
+ 
+  map.on("click", function (e) {
+    selectedLat = e.latlng.lat;
+    selectedLon = e.latlng.lng;
+ 
+    if (marker) {
+      marker.setLatLng(e.latlng);
+    } else {
+      marker = L.marker(e.latlng).addTo(map);
     }
-
-    // ===============================
-    // ERROR HANDLING
-    // ===============================
-    async function handleApiError(res) {
-      if (res.status === 429) {
-        status.textContent =
-          "Please wait a moment before running another calculation.";
-      } else if (res.status >= 500) {
-        status.textContent =
-          "The calculation service is temporarily unavailable.";
-      } else {
-        const txt = await res.text();
-        status.textContent = "Error: " + txt;
-      }
-
+ 
+    coords.textContent =
+      selectedLat.toFixed(4) + ", " + selectedLon.toFixed(4);
+ 
+    status.textContent = "";
+    result.textContent = "";
+  });
+ 
+  // IMPORTANT: Fix map render in Siteglide
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 400);
+ 
+  // ===============================
+  // API CALL
+  // ===============================
+  async function calculateYield() {
+    if (isRunning) return;
+ 
+    if (selectedLat === null || selectedLon === null) {
+      status.textContent = "Please select a location on the map.";
+      return;
+    }
+ 
+    isRunning = true;
+    btn.disabled = true;
+    btn.textContent = "Calculating…";
+    status.textContent = "Running yield model…";
+    result.textContent = "";
+ 
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat: selectedLat,
+          lon: selectedLon,
+          timezone: DEFAULT_TIMEZONE,
+          no_panels: 1
+        })
+      });
+ 
+      if (!res.ok) throw new Error("API error: " + res.status);
+ 
+      const data = await res.json();
+ 
+      result.innerHTML = `
+<strong>Annual energy:</strong> ${data.annual_kwh} kWh<br>
+<strong>Yield:</strong> ${data.kwh_per_kwp} kWh/kWp
+      `;
+ 
+      status.textContent = "Calculation complete ✅";
+ 
+    } catch (err) {
+      status.textContent = "Network error – please try again.";
+    } finally {
       isRunning = false;
       btn.disabled = false;
       btn.textContent = "Calculate annual yield";
     }
-
-    // ===============================
-    // BUTTON BINDING
-    // ===============================
-    btn.addEventListener("click", calculateYield);
-  </script>
-
-</body>
-</html>
+  }
+ 
+  btn.addEventListener("click", calculateYield);
+ 
+});
+</script>
