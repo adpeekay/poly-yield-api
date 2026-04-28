@@ -1,7 +1,35 @@
+import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException, Request
+from collections import defaultdict
 from pydantic import BaseModel
 from model import annual_yield
+
+# --- Rate limiting configuration ---
+RATE_LIMIT = 10        # max requests
+RATE_WINDOW = 60       # seconds
+
+_request_log = defaultdict(list)
+
+def check_rate_limit(request: Request):
+    ip = request.client.host
+    now = time.time()
+
+    # Drop old timestamps
+    _request_log[ip] = [
+        t for t in _request_log[ip]
+        if now - t < RATE_WINDOW
+    ]
+
+    if len(_request_log[ip]) >= RATE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please wait a moment and try again."
+        )
+
+    _request_log[ip].append(now)
+
 
 app = FastAPI(title="PV Yield API")
 
@@ -30,7 +58,10 @@ def health_check():
 
 
 @app.post("/calculate")
-def calculate(req: YieldRequest):
+def calculate(req: YieldRequest, request: Request):
+
+    check_rate_limit(request)
+
     annual_kwh, kwh_per_kwp, _ = annual_yield(
         lat=req.lat,
         lon=req.lon,
