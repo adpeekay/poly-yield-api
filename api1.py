@@ -6,6 +6,7 @@ from fastapi import HTTPException, Request
 from collections import defaultdict
 from functools import lru_cache
 from pydantic import BaseModel
+from typing import Optional 
 from model import annual_yield
 
 logging.basicConfig(
@@ -98,6 +99,19 @@ class YieldRequest(BaseModel):
     temp_air: float = 20.0
     wind_speed: float = 3.0
     year: int = 2024
+    
+class EmailRequest(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    latitude: float
+    longitude: float
+    panels: str
+    curvature: str
+    slope: str
+    annual_kwh: float
+    kwh_per_kwp: float
+    monthly_data: list | None = None
 
 
 @app.get("/")
@@ -140,4 +154,17 @@ def calculate(req: YieldRequest, request: Request):
         "kwh_per_kwp": round(kwh_per_kwp, 0),
         "daily_kwh" : [{"date": d.isoformat(),"kwh":float(v)}
                        for d, v in daily_kwh.items()]
+    }
+    
+@app.post("/email_results")
+def email_results(payload: EmailRequest):
+    logging.info(
+        "EMAIL REQUEST | %s | %s | annual=%.1f kWh",
+        payload.name,
+        payload.email,
+        payload.annual_kwh,
+    )
+    return {
+        "success": True,
+        "message": "Email payload received"
     }
