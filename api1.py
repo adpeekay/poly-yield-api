@@ -8,6 +8,8 @@ from functools import lru_cache
 from pydantic import BaseModel
 from typing import Optional 
 from model import annual_yield
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 logging.basicConfig(
     level=logging.INFO,
