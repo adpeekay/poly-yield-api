@@ -4,3 +4,4 @@ pvlib
 numpy
 pandas
 matplotlib
+sendgrid
